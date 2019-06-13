@@ -19,6 +19,7 @@ DensitySem.v
 NDSem.v
 SQIRE.v
 UnitarySem.v
+HOAS.v
 
 compiler/Equivalences.v
 compiler/Mapping.v

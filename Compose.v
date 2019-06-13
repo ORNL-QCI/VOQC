@@ -97,10 +97,11 @@ Proof.
   inversion H; assumption.
 Qed.
 
-Lemma pad_dims_l : forall c n k,
-  I (2^n) ⊗ (uc_eval k c) = uc_eval (n + k) (map_qubits (fun q => q + n) c).  
+Lemma pad_dims_l : forall c n k f,
+  (forall q, f q = q + n) ->
+  I (2^n) ⊗ (uc_eval k c) = uc_eval (n + k) (map_qubits f c).
 Proof.
-  intros c n k.
+  intros c n k f f_eq.
   induction c.
   - simpl. rewrite id_kron. unify_pows_two. reflexivity.
   - simpl. rewrite <- IHc1, <- IHc2.
@@ -113,6 +114,7 @@ Proof.
       repeat match goal with
       | [|- context [pad _ _ ?U ]] => remember U as U'
       end.
+      rewrite f_eq.
       clear.
       unfold pad.
       bdestruct (a + 1 <=? k).
@@ -128,6 +130,7 @@ Proof.
       replace (n + a) with (a + n) by lia.
       reflexivity.
     + destruct l as [| a [|b[|]]]; simpl; remove_zero_gates; trivial.
+      repeat rewrite f_eq; clear f f_eq.
       unfold ueval_cnot.
       bdestruct (a <? b).
       * replace (a + n <? b + n) with true by (symmetry; apply Nat.ltb_lt; lia).
@@ -214,7 +217,7 @@ Proof.
   intros c1 c2 dim1 dim2 WTc1.
   simpl.
   rewrite <- (pad_dims_r c1); try assumption.
-  rewrite <- pad_dims_l.
+  rewrite <- pad_dims_l; auto.
   restore_dims_strong.
   rewrite kron_mixed_product.
   Msimpl.

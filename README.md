@@ -25,6 +25,7 @@ The files below are specific to SQIRE.
 - DensitySem.v : Density matrix semantics for general SQIRE programs.
 - NDSem.v : Non-deterministic semantics for general SQIRE programs.
 - Compose.v : Composition of unitary SQIRE programs.
+- HOAS.v: Higher-order abstract syntax for SQIRE programs
 
 We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
 
