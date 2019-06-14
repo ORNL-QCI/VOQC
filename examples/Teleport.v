@@ -92,9 +92,9 @@ Import UnitarySem.
 Open Scope ucom.
 
 Definition bell (c b : nat) : ucom := H c ; CNOT c b.
-Definition alice (a c : nat) : ucom := CNOT a c ; H a.
-Definition bob (a c b: nat) : ucom := CNOT c b; CZ a b.
-Definition teleport (a c b : nat) : ucom := alice a c; bob a c b.
+Definition alice (a b : nat) : ucom := CNOT a b ; H a.
+Definition bob (a b c: nat) : ucom := CNOT b c; CZ a c.
+Definition teleport (a b c : nat) : ucom := alice a b; bob a b c.
 
 Definition epr00 : Vector 4 :=
   fun x y => match x, y with
