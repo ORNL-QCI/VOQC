@@ -19,13 +19,6 @@ The development has been tested with Coq versions 8.9.1. On a standard laptop, `
 
 We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
 
-### hll-compiler
-
-Compilation from higher-level languages to SQIR. Compilation from QWIRE is experimental (i.e. not done).
-
-- compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
-- compiler/CompileFromQwire.v : Compilation from QWIRE to SQIR. **(WIP)**
-
 ### optimizer
 
 Current progress on a verified optimizer for SQIR programs.
@@ -51,7 +44,6 @@ Current progress on a verified optimizer for SQIR programs.
 Mapping algorithms for SQIR programs.
 
 - mapper/SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
-- mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(WIP)**
 - mapper/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
 
 ### examples

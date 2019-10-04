@@ -27,7 +27,7 @@ invoke-coqmakefile: CoqMakefile
 
 COQ_OPTS := -R . Top
 
-all: examples mapper optimizer hll-compiler/BooleanCompilation.vo
+all: examples mapper optimizer
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Superdense.vo examples/Teleport.vo
 mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
 optimizer: invoke-coqmakefile optimizer/Equivalences.vo optimizer/GateCancellation.vo optimizer/HadamardReduction.vo optimizer/ListRepresentation.vo optimizer/NotPropagation.vo optimizer/PI4GateSet.vo optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo optimizer/RotationMerging.vo optimizer/SkipElimination.vo
@@ -89,14 +89,9 @@ optimizer/RotationMerging.vo: optimizer/RotationMerging.v optimizer/PI4GateSet.v
 optimizer/SkipElimination.vo: optimizer/SkipElimination.v optimizer/Equivalences.vo
 	coqc $(COQ_OPTS) optimizer/SkipElimination.v
 
-# Misc. files built by 'make all'
-
-hll-compiler/BooleanCompilation.vo: hll-compiler/BooleanCompilation.v core/Utilities.vo lib/QWIRE/Dirac.vo
-	coqc $(COQ_OPTS) hll-compiler/BooleanCompilation.v
-
 # Using a custom clean target to remove files from subdirectories
 clean:
-	rm -f CoqMakefile CoqMakefile.conf lib/QWIRE/*.vo lib/QWIRE/*.glob core/*.vo core/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob hll-compiler/*.vo hll-compiler/*.glob
+	rm -f CoqMakefile CoqMakefile.conf lib/QWIRE/*.vo lib/QWIRE/*.glob core/*.vo core/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob
 
 # This should be the last rule, to handle any targets not declared above
 %: invoke-coqmakefile
