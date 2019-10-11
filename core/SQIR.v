@@ -9,11 +9,13 @@ Require Import Psatz.
    We could instead allow something more general (e.g. application of
    an arbitrary unitary to a list of arguments), but this would make
    proofs longer for little added benefit. *)
+
 Inductive ucom (U: nat -> Set) (dim : nat) : Set :=
 | useq :  ucom U dim -> ucom U dim -> ucom U dim
 | uapp1 : U 1 -> nat -> ucom U dim
 | uapp2 : U 2 -> nat -> nat -> ucom U dim
 | uapp3 : U 3 -> nat -> nat -> nat -> ucom U dim.
+
 
 (* Set the dimension argument to be implicit. *)
 Arguments useq {U dim}.
@@ -159,8 +161,55 @@ Fixpoint crepeat {U dim} (k : nat) (p : com U dim) : com U dim :=
   | S k' => p ; crepeat k' p
   end.
 
+Print Scopes.
+
+Definition var := (nat + unit)%type.
+
+Inductive iucom (U: nat -> Set) (dim : nat) : Set :=
+| iuseq :  iucom U dim -> iucom U dim -> iucom U dim
+| iuapp1 : U 1 -> var -> iucom U dim.
+
+Arguments iuseq {U dim}.
+Arguments iuapp1 {U dim}.
+
+Definition substitute_var (v : var) (n : nat) : nat :=
+  match v with
+  | inl n' => n'
+  | inr _  => n
+  end.
+
+Fixpoint substitute {U dim} (iu :iucom U dim) (n : nat) : ucom U dim :=
+  match iu with
+  | iuseq iu1 iu2 => useq (substitute iu1 n) (substitute iu2 n)
+  | iuapp1 u v => uapp1 u (substitute_var v n)
+  end.
+
+(* Could make f of type icom where [substitute icom n : com] *)
+Fixpoint cfold {U dim} (f : nat -> com U dim) (n : nat) : com U dim :=
+  match n with
+  | 0 => f 0
+  | S n' => f n ; cfold f n'
+  end.
+
+Fixpoint cfold' {U dim} (f : com U dim -> com U dim) (n : nat) (base : com U dim) : com U dim :=
+  match n with
+  | 0 => base
+  | S n' => f (cfold' f n' base)
+  end.
+
+Definition foo : base_com 2 := cfold' (fun x => CNOT 0 1 ; x) 10 skip.
+
+Compute foo.
+
+Definition entangle_all (n : nat) : base_com n := cfold (fun x => CNOT x (S x)) n. 
+
+Compute (entangle_all 10).
+
 Fixpoint while {U dim} (max_iters : nat) (n : nat) (p : com U dim) : com U dim :=
   match max_iters with
   | 0        => skip
   | S iters' => mif n then p ; while iters' n p else skip
   end.
+
+
+
