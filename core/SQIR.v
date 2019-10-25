@@ -163,25 +163,37 @@ Fixpoint crepeat {U dim} (k : nat) (p : com U dim) : com U dim :=
 
 Print Scopes.
 
-Definition var := (nat + unit)%type.
+(* Definition var := (nat + unit)%type. *)
+Definition var := (nat -> nat)%type.
 
 Inductive iucom (U: nat -> Set) (dim : nat) : Set :=
+| iu : ucom U dim -> iucom U dim
 | iuseq :  iucom U dim -> iucom U dim -> iucom U dim
-| iuapp1 : U 1 -> var -> iucom U dim.
+| iuapp1 : U 1 -> var -> iucom U dim
+| iuapp2 : U 2 -> var -> var -> iucom U dim
+| iuapp3 : U 3 -> var -> var -> var -> iucom U dim.
 
+Arguments iu {U dim}.
 Arguments iuseq {U dim}.
 Arguments iuapp1 {U dim}.
+Arguments iuapp2 {U dim}.
+Arguments iuapp3 {U dim}.
 
-Definition substitute_var (v : var) (n : nat) : nat :=
+(*Definition substitute_var (v : var) (n : nat) : nat :=
   match v with
   | inl n' => n'
   | inr _  => n
-  end.
+  end.*)
+
+Definition substitute_var (v : var) (n : nat) : nat := v n.
 
 Fixpoint substitute {U dim} (iu :iucom U dim) (n : nat) : ucom U dim :=
   match iu with
+  | iu u => u
   | iuseq iu1 iu2 => useq (substitute iu1 n) (substitute iu2 n)
   | iuapp1 u v => uapp1 u (substitute_var v n)
+  | iuapp2 u v1 v2 => uapp2 u (substitute_var v1 n) (substitute_var v2 n)
+  | iuapp3 u v1 v2 v3 => uapp3 u (substitute_var v1 n) (substitute_var v2 n) (substitute_var v3 n)
   end.
 
 (* Could make f of type icom where [substitute icom n : com] *)
@@ -196,6 +208,9 @@ Fixpoint cfold' {U dim} (f : com U dim -> com U dim) (n : nat) (base : com U dim
   | 0 => base
   | S n' => f (cfold' f n' base)
   end.
+
+Definition from_ucom' {U dim} (c : ucom U dim) : iucom U dim := iu c.
+Coercion from_ucom' : ucom >-> iucom.
 
 Definition foo : base_com 2 := cfold' (fun x => CNOT 0 1 ; x) 10 skip.
 
