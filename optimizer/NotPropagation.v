@@ -1,6 +1,6 @@
 Require Import Proportional.
 Require Import Equivalences.
-Require Export PI4GateSet.
+Require Export OptimizerGates.
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
@@ -17,7 +17,7 @@ Local Open Scope ucom_scope.
    X and Z propagate through CNOT. These additional gates will be removed by
    later passes. *)
 
-Fixpoint propagate_Z {dim} (l : PI4_ucom_l dim) q n :=
+Fixpoint propagate_Z {dim} (l : opt_ucom_l dim) q n :=
   match n with
   | O => Z q :: l
   | S n' =>
@@ -27,10 +27,10 @@ Fixpoint propagate_Z {dim} (l : PI4_ucom_l dim) q n :=
           if does_not_reference_appl q u
           then u :: propagate_Z t q n'
           else match u with
-               | App1 UPI4_X n => u :: propagate_Z t q n' (* introduces global phase *)
-               | App1 UPI4_H n => u :: propagate_X t q n' 
-               | App1 (UPI4_PI4 k) n => u :: propagate_Z t q n'
-               | App2 UPI4_CNOT m n =>
+               | App1 UO_X n => u :: propagate_Z t q n' (* introduces global phase *)
+               | App1 UO_H n => u :: propagate_X t q n' 
+               | App1 (UO_Rzπ k) n => u :: propagate_Z t q n'
+               | App2 UO_CNOT m n =>
                    if q =? n 
                    then u :: propagate_Z (propagate_Z t n n') m n'
                    else u :: propagate_Z t q n'
@@ -38,7 +38,7 @@ Fixpoint propagate_Z {dim} (l : PI4_ucom_l dim) q n :=
                end
       end
   end
-with propagate_X {dim} (l : PI4_ucom_l dim) q n :=
+with propagate_X {dim} (l : opt_ucom_l dim) q n :=
   match n with
   | O => X q :: l
   | S n' =>
@@ -48,11 +48,11 @@ with propagate_X {dim} (l : PI4_ucom_l dim) q n :=
           if does_not_reference_appl q u
           then u :: propagate_X t q n'
           else match u with
-               | App1 UPI4_X n => t
-               | App1 UPI4_H n => u :: propagate_Z t q n'
-               | App1 (UPI4_PI4 k) n =>
-                   App1 (UPI4_PI4 (8 - k)%Z) n :: propagate_X t q n'
-               | App2 UPI4_CNOT m n =>
+               | App1 UO_X n => t
+               | App1 UO_H n => u :: propagate_Z t q n'
+               | App1 (UO_Rzπ k) n =>
+                   App1 (UO_Rzπ (2 * DEN - k)%Z) n :: propagate_X t q n'
+               | App2 UO_CNOT m n =>
                    if q =? m 
                    then u :: propagate_X (propagate_X t m n') n n'
                    else u :: propagate_X t q n'
@@ -61,13 +61,13 @@ with propagate_X {dim} (l : PI4_ucom_l dim) q n :=
       end
   end.
 
-Fixpoint not_propagation' {dim} (l : PI4_ucom_l dim) n :=
+Fixpoint not_propagation' {dim} (l : opt_ucom_l dim) n :=
   match n with
   | O => l
   | S n' => 
       match l with
       | [] => [] 
-      | App1 UPI4_X q :: t =>
+      | App1 UO_X q :: t =>
           let l' := propagate_X t q n in
           not_propagation' l' n'
       | u  :: t => u :: not_propagation' t n'
@@ -76,7 +76,7 @@ Fixpoint not_propagation' {dim} (l : PI4_ucom_l dim) n :=
 
 (* Worst case, every CNOT propagates two X/Z gates, so we start with
    n = 2 × (length n). The n = 0 case should be unreachable. *)
-Definition not_propagation {dim} (l : PI4_ucom_l dim) := 
+Definition not_propagation {dim} (l : opt_ucom_l dim) := 
   not_propagation' l (2 * List.length l).
 
 (* Proofs *)
@@ -88,7 +88,7 @@ Proof.
   unfold uc_equiv_l, uc_equiv; simpl.
   repeat rewrite Mmult_assoc.
   apply f_equal2; trivial.
-  replace (4 * PI / 4)%R with PI by lra.
+  replace (IZR DEN * PI / IZR DEN)%R with PI by (unfold DEN; lra).
   rewrite pauli_x_rotation.
   rewrite pauli_z_rotation.
   rewrite hadamard_rotation.
@@ -105,7 +105,7 @@ Proof.
   unfold uc_equiv_l, uc_equiv; simpl.
   repeat rewrite Mmult_assoc.
   apply f_equal2; trivial.
-  replace (4 * PI / 4)%R with PI by lra.
+  replace (IZR DEN * PI / IZR DEN)%R with PI by (unfold DEN; lra).
   rewrite pauli_x_rotation.
   rewrite pauli_z_rotation.
   rewrite hadamard_rotation.
@@ -132,7 +132,7 @@ Lemma Z_X_commutes : forall {dim} q,
 Proof.
   intros.
   unfold uc_cong_l, uc_cong; simpl.
-  replace (4 * PI / 4)%R with PI by lra.
+  replace (IZR DEN * PI / IZR DEN)%R with PI by (unfold DEN; lra).
   rewrite pauli_x_rotation.
   rewrite pauli_z_rotation.
   exists PI.
@@ -149,12 +149,12 @@ Proof.
 Qed.
 
 Lemma Rz_X_commutes : forall {dim} q k,
-  ([@X dim q] ++ [App1 (UPI4_PI4 k) q]) ≅l≅ ([App1 (UPI4_PI4 (8 - k)) q] ++ [X q]).
+  ([@X dim q] ++ [App1 (UO_Rzπ k) q]) ≅l≅ ([App1 (UO_Rzπ (2 * DEN - k)) q] ++ [X q]).
 Proof.
   intros.
-  Local Opaque Z.sub.
+  Local Opaque Z.sub Z.mul.
   unfold uc_cong_l, uc_cong; simpl.
-  exists (IZR k * PI / 4)%R.
+  exists (IZR k * PI / IZR DEN)%R.
   rewrite pauli_x_rotation.
   repeat rewrite phase_shift_rotation.
   repeat rewrite Mmult_assoc.
@@ -170,23 +170,25 @@ Proof.
   autorewrite with R_db.
   repeat rewrite Rmult_plus_distr_r.
   rewrite Cexp_add.
-  replace (8 * PI * / 4)%R with (2 * PI)%R by lra.
+  Local Transparent Z.mul.  
+  replace (IZR (2 * DEN) * PI * / IZR DEN)%R with (2 * PI)%R  
+    by (unfold DEN; simpl; lra).
   rewrite (Cmult_comm (Cexp (2 * PI))).
   rewrite Cmult_assoc.
   rewrite <- Cexp_add.
-  replace (IZR k * PI * / 4 + - IZR k * PI * / 4)%R with 0%R by lra.
+  replace (IZR k * PI * / IZR DEN + - IZR k * PI * / IZR DEN)%R with 0%R by lra.
   rewrite Cexp_2PI, Cexp_0.
   lca.
 Qed.
 
 Lemma Z_Rz_commutes : forall {dim} q k,
-  [@Z dim q] ++ [App1 (UPI4_PI4 k) q] =l= [App1 (UPI4_PI4 k) q] ++ [Z q].
+  [@Z dim q] ++ [App1 (UO_Rzπ k) q] =l= [App1 (UO_Rzπ k) q] ++ [Z q].
 Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
   repeat rewrite Mmult_assoc.
   apply f_equal2; trivial.
-  replace (4 * PI / 4)%R with PI by lra.
+  replace (IZR DEN * PI / IZR DEN)%R with PI by (unfold DEN; lra).
   rewrite pauli_z_rotation.
   rewrite phase_shift_rotation.
   autorewrite with eval_db.
@@ -230,7 +232,7 @@ Proof.
   unfold uc_equiv_l, uc_equiv; simpl.
   repeat rewrite Mmult_assoc.
   apply f_equal2; trivial.
-  replace (4 * PI / 4)%R with PI by lra.
+  replace (IZR DEN * PI / IZR DEN)%R with PI by (unfold DEN; lra).
   rewrite pauli_z_rotation.
   autorewrite with eval_db.
   gridify; trivial.
@@ -246,7 +248,7 @@ Proof.
   unfold uc_equiv_l, uc_equiv; simpl.
   repeat rewrite Mmult_assoc.
   apply f_equal2; trivial.
-  replace (4 * PI / 4)%R with PI by lra.
+  replace (IZR DEN * PI / IZR DEN)%R with PI by (unfold DEN; lra).
   rewrite pauli_z_rotation.
   autorewrite with eval_db.
   gridify; trivial.
@@ -258,7 +260,7 @@ Proof.
   all: reflexivity.
 Qed.
 
-Lemma propagate_X_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) q n,
+Lemma propagate_X_preserves_semantics : forall {dim} (l : opt_ucom_l dim) q n,
   (q < dim)%nat -> propagate_X l q n ≅l≅ (X q :: l) /\ propagate_Z l q n ≅l≅ (Z q :: l).
 Proof.
   intros dim l q n Hq.
@@ -269,9 +271,9 @@ Proof.
   destruct l. 
   split; reflexivity.
   (* split the inductive hypothesis into 2 separate hypotheses *)
-  assert (IHX : forall (l : PI4_ucom_l dim) (q : nat), q < dim -> propagate_X l q n ≅l≅ (X q :: l)).
+  assert (IHX : forall (l : opt_ucom_l dim) (q : nat), q < dim -> propagate_X l q n ≅l≅ (X q :: l)).
   { intros. specialize (IHn l0 _ H) as [IHX _]. assumption. }
-  assert (IHZ : forall (l : PI4_ucom_l dim) (q : nat), q < dim -> propagate_Z l q n ≅l≅ (Z q :: l)).
+  assert (IHZ : forall (l : opt_ucom_l dim) (q : nat), q < dim -> propagate_Z l q n ≅l≅ (Z q :: l)).
   { intros. specialize (IHn l0 _ H) as [_ IHZ]. assumption. }
   clear IHn.
   simpl. 
@@ -288,7 +290,7 @@ Proof.
   destruct g. 
   - simpl in dnr. apply negb_false_iff in dnr. 
     apply beq_nat_true in dnr. subst.
-    dependent destruction p.
+    dependent destruction o.
     split; [rewrite IHZ | rewrite IHX]; try assumption.
     1,2: rewrite 2 (cons_to_app _ (_ :: l));
          rewrite 2 (cons_to_app _ l);
@@ -311,7 +313,7 @@ Proof.
     rewrite Rz_X_commutes; reflexivity.
     apply uc_equiv_cong_l.
     rewrite Z_Rz_commutes; reflexivity.
-  - dependent destruction p. 
+  - dependent destruction o. 
     bdestruct (q =? n0); bdestruct (q =? n1); subst; split.
     1,2: apply uc_equiv_cong_l; unfold uc_equiv_l, uc_equiv; simpl;
          autorewrite with eval_db; bdestruct_all; Msimpl_light; reflexivity.
@@ -342,10 +344,10 @@ Proof.
     apply uc_equiv_cong_l; apply uc_app_congruence; [|reflexivity].
     rewrite <- app_assoc.
     symmetry. apply propagate_Z_through_CNOT_target.
-  - inversion p.
+  - inversion o.
 Qed.
 
-Lemma propagate_X_well_typed : forall {dim} (l : PI4_ucom_l dim) q n,
+Lemma propagate_X_well_typed : forall {dim} (l : opt_ucom_l dim) q n,
   (q < dim)%nat -> uc_well_typed_l l -> uc_well_typed_l (propagate_X l q n).
 Proof.
   intros dim l q n Hq WT.
@@ -356,7 +358,7 @@ Proof.
   apply uc_cong_l_implies_WT in H; assumption.
 Qed.
 
-Lemma not_propagation_sound : forall {dim} (l : PI4_ucom_l dim), 
+Lemma not_propagation_sound : forall {dim} (l : opt_ucom_l dim), 
   uc_well_typed_l l -> not_propagation l ≅l≅ l.
 Proof.
   intros dim l WT.
@@ -375,7 +377,7 @@ Proof.
   apply H.
 Qed.
 
-Lemma not_propagation_WT : forall {dim} (l : PI4_ucom_l dim),
+Lemma not_propagation_WT : forall {dim} (l : opt_ucom_l dim),
   uc_well_typed_l l -> uc_well_typed_l (not_propagation l).
 Proof.
   intros dim l WT.

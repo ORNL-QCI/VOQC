@@ -1,6 +1,6 @@
 Require Import UnitarySem.
 Require Import core.Utilities.
-Require Export PI4GateSet.
+Require Export OptimizerGates.
 
 Local Open Scope ucom_scope.
 
@@ -37,15 +37,15 @@ Definition add x l :=
    Find a subcircuit in l that involves qubits in qs1, but not qubits
    in qs2, and only uses CNOT, X, and Rz gates. Return (l1, s, l2) s.t.
    s is the desired subcircuit and l ≡ l1 ++ s ++ l2. *)
-Fixpoint get_subcircuit' {dim} (l : PI4_ucom_l dim) (qs1 qs2 : list nat) n
-             : (PI4_ucom_l dim * PI4_ucom_l dim * PI4_ucom_l dim) :=
+Fixpoint get_subcircuit' {dim} (l : opt_ucom_l dim) (qs1 qs2 : list nat) n
+             : (opt_ucom_l dim * opt_ucom_l dim * opt_ucom_l dim) :=
   match n with
   | O => ([], [], l)
   | S n' => match next_gate l qs1 with
-           | Some (l1, App1 UPI4_H q, l2) =>
+           | Some (l1, App1 UO_H q, l2) =>
                let (tmp, l2') := get_subcircuit' l2 qs1 (add q qs2) n' in
                let (l1', s) := tmp in
-               (l1 ++ l1', s, [App1 UPI4_H q] ++ l2')
+               (l1 ++ l1', s, [App1 UO_H q] ++ l2')
            | Some (l1, App1 u q, l2) =>
                let (tmp, l2') := get_subcircuit' l2 qs1 qs2 n' in
                let (l1', s) := tmp in
@@ -64,7 +64,7 @@ Fixpoint get_subcircuit' {dim} (l : PI4_ucom_l dim) (qs1 qs2 : list nat) n
            end
   end.
 
-Definition get_subcircuit {dim} (l : PI4_ucom_l dim) q := 
+Definition get_subcircuit {dim} (l : opt_ucom_l dim) q := 
   get_subcircuit' l [q] [] (List.length l).
 
 (* Proofs *)
@@ -86,7 +86,7 @@ Proof.
   try right; assumption.
 Qed.
 
-Lemma get_subcircuit'_l1_does_not_reference : forall {dim} (l : PI4_ucom_l dim) qs1 qs2 n l1 s l2,
+Lemma get_subcircuit'_l1_does_not_reference : forall {dim} (l : opt_ucom_l dim) qs1 qs2 n l1 s l2,
   get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
   forall q, List.In q qs1 -> does_not_reference l1 q = true.
 Proof. 
@@ -103,7 +103,7 @@ Proof.
     2: { inversion H; subst. constructor. }
     repeat destruct p.
     destruct g1.
-    + dependent destruction p;
+    + dependent destruction o;
       [ destruct (get_subcircuit' g qs1 (add n0 qs2) n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc ];
@@ -119,7 +119,7 @@ Proof.
     + destruct (inb n0 qs2 || inb n1 qs2);
       [ destruct (get_subcircuit' g (add n0 (add n1 qs1)) (add n0 (add n1 qs2)) n) eqn:subc
       | destruct (get_subcircuit' g (add n0 (add n1 qs1)) qs2 n) eqn:subc ];
-      destruct p0;
+      destruct p;
       inversion H; subst.
       all: intros q Hq;
            apply does_not_reference_app;
@@ -127,10 +127,10 @@ Proof.
            split.
       all: try (apply (next_gate_l1_does_not_reference _ _ _ _ _ ng); assumption).
       all: eapply IHn; try apply subc; repeat apply add_In_l; assumption.
-    + dependent destruction p.
+    + dependent destruction o.
 Qed.
 
-Lemma get_subcircuit'_s_does_not_reference : forall {dim} (l : PI4_ucom_l dim) qs1 qs2 n l1 s l2,
+Lemma get_subcircuit'_s_does_not_reference : forall {dim} (l : opt_ucom_l dim) qs1 qs2 n l1 s l2,
   get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
   forall q, List.In q qs2 -> does_not_reference s q = true.
 Proof.
@@ -147,7 +147,7 @@ Proof.
     2: { inversion H; subst. constructor. }
     repeat destruct p.
     destruct g1.
-    + dependent destruction p;
+    + dependent destruction o;
       [ destruct (get_subcircuit' g qs1 (add n0 qs2) n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc ];
@@ -163,7 +163,7 @@ Proof.
     + destruct (inb n0 qs2 || inb n1 qs2) eqn:Hinb;
       [ destruct (get_subcircuit' g (add n0 (add n1 qs1)) (add n0 (add n1 qs2)) n) eqn:subc
       | destruct (get_subcircuit' g (add n0 (add n1 qs1)) qs2 n) eqn:subc ];
-      destruct p0;
+      destruct p;
       inversion H; subst.
       all: intros q Hq.
       all: try (simpl; apply andb_true_intro; split).
@@ -173,10 +173,10 @@ Proof.
       apply negb_true_iff; apply orb_false_intro; apply eqb_neq.
       apply (inb_false _ _ Hinb1); assumption.
       apply (inb_false _ _ Hinb2); assumption.
-    + dependent destruction p.
+    + dependent destruction o.
 Qed.
 
-Lemma get_subcircuit'_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) qs1 qs2 n l1 s l2,
+Lemma get_subcircuit'_preserves_semantics : forall {dim} (l : opt_ucom_l dim) qs1 qs2 n l1 s l2,
   get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
   l =l= l1 ++ s ++ l2.
 Proof.
@@ -194,14 +194,14 @@ Proof.
     2: { inversion H; subst. reflexivity. }
     repeat destruct p.
     destruct g1.
-    + dependent destruction p;
+    + dependent destruction o;
       [ destruct (get_subcircuit' g qs1 (add n0 qs2) n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc];
       destruct p;
       try destruct (inb n0 qs2) eqn:Hinb;
       inversion H; subst.
-      all: assert (dnr1 : does_not_reference p n0 = true) by
+      all: assert (dnr1 : does_not_reference o0 n0 = true) by
            (eapply get_subcircuit'_l1_does_not_reference;
             [ apply subc | eapply next_gate_app1_returns_q; apply ng]).
       all: try assert (dnr2 : does_not_reference s n0 = true) by
@@ -213,8 +213,8 @@ Proof.
            rewrite ng;
            apply IHn in subc;
            rewrite subc.
-      all: try rewrite (cons_to_app _ p0).
-      all: try rewrite (cons_to_app _ p1).
+      all: try rewrite (cons_to_app _ o).
+      all: try rewrite (cons_to_app _ o1).
       all: repeat rewrite <- app_assoc;
            apply uc_app_congruence; try reflexivity;
            repeat rewrite app_assoc;
@@ -228,9 +228,9 @@ Proof.
       [ destruct (get_subcircuit' g (add n0 (add n1 qs1)) (add n0 (add n1 qs2)) n) eqn:subc
       | apply orb_false_elim in Hinb as [Hinb1 Hinb2];
         destruct (get_subcircuit' g (add n0 (add n1 qs1)) qs2 n) eqn:subc];
-      destruct p0;
+      destruct p;
       inversion H; subst.
-      * assert (dnr1 : does_not_reference p0 n0 = true).
+      * assert (dnr1 : does_not_reference o1 n0 = true).
         { eapply get_subcircuit'_l1_does_not_reference.
           apply subc.
           apply add_In_x. }
@@ -238,7 +238,7 @@ Proof.
         { eapply get_subcircuit'_s_does_not_reference.
           apply subc.
            apply add_In_x. }
-        assert (dnr3 : does_not_reference p0 n1 = true).
+        assert (dnr3 : does_not_reference o1 n1 = true).
         { eapply get_subcircuit'_l1_does_not_reference.
           apply subc.
           apply add_In_l. apply add_In_x. }
@@ -250,7 +250,7 @@ Proof.
         rewrite ng.
         apply IHn in subc.
         rewrite subc.
-        rewrite (cons_to_app _ p1).
+        rewrite (cons_to_app _ o0).
         repeat rewrite <- app_assoc.
         apply uc_app_congruence; try reflexivity.
         repeat rewrite app_assoc.
@@ -259,11 +259,11 @@ Proof.
         repeat rewrite <- app_assoc.
         rewrite does_not_reference_commutes_app2; try assumption.
         reflexivity.
-      * assert (dnr1 : does_not_reference p0 n0 = true).
+      * assert (dnr1 : does_not_reference o1 n0 = true).
         { eapply get_subcircuit'_l1_does_not_reference.
           apply subc.
           apply add_In_x. }
-        assert (dnr2 : does_not_reference p0 n1 = true).
+        assert (dnr2 : does_not_reference o1 n1 = true).
         { eapply get_subcircuit'_l1_does_not_reference.
           apply subc.
           apply add_In_l. apply add_In_x. }
@@ -271,17 +271,17 @@ Proof.
         rewrite ng.
         apply IHn in subc.
         rewrite subc.
-        rewrite (cons_to_app _ p2).
+        rewrite (cons_to_app _ o2).
         repeat rewrite <- app_assoc.
         apply uc_app_congruence; try reflexivity.
         repeat rewrite app_assoc.
         apply uc_app_congruence; try reflexivity.
         rewrite does_not_reference_commutes_app2; try assumption.
         reflexivity.
-    + dependent destruction p.
+    + dependent destruction o.
 Qed.
 
-Lemma get_subcircuit_l1_does_not_reference : forall {dim} (l : PI4_ucom_l dim) q l1 s l2,
+Lemma get_subcircuit_l1_does_not_reference : forall {dim} (l : opt_ucom_l dim) q l1 s l2,
   get_subcircuit l q = (l1, s, l2) ->
   does_not_reference l1 q = true.
 Proof.
@@ -292,7 +292,7 @@ Proof.
   left; reflexivity.
 Qed.
 
-Lemma get_subcircuit_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) q l1 s l2,
+Lemma get_subcircuit_preserves_semantics : forall {dim} (l : opt_ucom_l dim) q l1 s l2,
   get_subcircuit l q = (l1, s, l2) ->
   l =l= l1 ++ s ++ l2.
 Proof. 
@@ -304,10 +304,10 @@ Qed.
 
 (* Examples *)
 
-Definition test1 : PI4_ucom_l 1 := T 0 :: H 0 :: [].
-Definition test2 : PI4_ucom_l 2 := T 0 :: CNOT 0 1 :: H 0 :: T 1 :: H 1 :: [].
-Definition test3 : PI4_ucom_l 3 := T 0 :: H 1 :: H 2 :: X 1 :: CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: H 1 :: T 2 :: [].
-Definition test4 : PI4_ucom_l 3 := T 1 :: T 2 :: CNOT 1 0 :: T 0 :: CNOT 1 2 :: CNOT 0 1 :: H 2 :: CNOT 1 2 :: CNOT 0 1 :: T 1 :: H 0 :: H 1 :: [].
+Definition test1 : opt_ucom_l 1 := T 0 :: H 0 :: [].
+Definition test2 : opt_ucom_l 2 := T 0 :: CNOT 0 1 :: H 0 :: T 1 :: H 1 :: [].
+Definition test3 : opt_ucom_l 3 := T 0 :: H 1 :: H 2 :: X 1 :: CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: H 1 :: T 2 :: [].
+Definition test4 : opt_ucom_l 3 := T 1 :: T 2 :: CNOT 1 0 :: T 0 :: CNOT 1 2 :: CNOT 0 1 :: H 2 :: CNOT 1 2 :: CNOT 0 1 :: T 1 :: H 0 :: H 1 :: [].
 
 (* Result: l1 = [], s = [T 0], l2 = [H 0] *)
 Compute (get_subcircuit test1 O). 
@@ -374,34 +374,62 @@ Definition xor f1 f2 :=
    k = phase of original rotation gate
    q = target of original rotation gate
    f = list of boolean function applied to every qubit *)
-Fixpoint merge' {dim} (s : PI4_ucom_l dim) k q f :=
+
+(*
+Fixpoint merge' {dim} (s : opt_ucom_l dim) k q f :=
   match s with
-  | (App1 UPI4_X q') :: t => 
+  | (App1 UO_X q') :: t => 
       let f' := update f q' (neg (f q') dim) in
       match merge' t k q f' with
-      | Some l => Some (App1 UPI4_X q' :: l)
+      | Some l => Some (App1 UO_X q' :: l)
       | _ => None
       end
-  | (App1 (UPI4_PI4 k') q') :: t =>
+  | (App1 (UO_Rzπ k') q') :: t =>
       if f_eqb (f q') (fun x => if x =? q then true else false) eqb (dim + 1)
       then let k'' := (k + k')%Z in
            if (k'' =? 8)%Z then Some t 
-           else if (k'' <? 8)%Z then Some (App1 (UPI4_PI4 k'') q' :: t)
-                else Some (App1 (UPI4_PI4 (k'' - 8)%Z) q' :: t) 
+           else if (k'' <? 8)%Z then Some (App1 (UO_Rzπ k'') q' :: t)
+                else Some (App1 (UO_Rzπ (k'' - 8)%Z) q' :: t) 
       else match merge' t k q f with
-           | Some l => Some (App1 (UPI4_PI4 k') q' :: l)
+           | Some l => Some (App1 (UO_Rzπ k') q' :: l)
            | _ => None
            end
-  | (App2 UPI4_CNOT q1 q2) :: t =>
+  | (App2 UO_CNOT q1 q2) :: t =>
       let f' := update f q2 (xor (f q1) (f q2)) in
       match merge' t k q f' with
-      | Some l => Some (App2 UPI4_CNOT q1 q2 :: l)
+      | Some l => Some (App2 UO_CNOT q1 q2 :: l)
+      | _ => None
+      end
+  | _ => None
+  end.
+*)
+
+(* Simplified version *)
+Fixpoint merge' {dim} (s : opt_ucom_l dim) k q f :=
+  match s with
+  | (App1 UO_X q') :: t => 
+      let f' := update f q' (neg (f q') dim) in
+      match merge' t k q f' with
+      | Some l => Some (App1 UO_X q' :: l)
+      | _ => None
+      end
+  | (App1 (UO_Rzπ k') q') :: t =>
+      if f_eqb (f q') (fun x => if x =? q then true else false) eqb (dim + 1)
+      then Some (App1 (UO_Rzπ (k + k')) q' :: t)
+      else match merge' t k q f with
+           | Some l => Some (App1 (UO_Rzπ k') q' :: l)
+           | _ => None
+           end
+  | (App2 UO_CNOT q1 q2) :: t =>
+      let f' := update f q2 (xor (f q1) (f q2)) in
+      match merge' t k q f' with
+      | Some l => Some (App2 UO_CNOT q1 q2 :: l)
       | _ => None
       end
   | _ => None
   end.
 
-Definition merge {dim} (s : PI4_ucom_l dim) k q :=
+Definition merge {dim} (s : opt_ucom_l dim) k q :=
   let finit := fun i => fun j => if j =? i then true else false in
   merge' s k q finit.
 
@@ -589,14 +617,14 @@ Qed.
 
 Definition b2R (b : bool) : R := if b then 1%R else 0%R.
 Local Coercion b2R : bool >-> R.
-Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (s : PI4_ucom_l dim) k q b l' f,
+Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (s : opt_ucom_l dim) k q b l' f,
   (q < dim)%nat ->
   uc_well_typed_l s ->
   merge' s k q b = Some l' ->
-  let A := uc_eval (list_to_ucom (PI4_to_base_ucom_l l')) in
-  let B := uc_eval (list_to_ucom (PI4_to_base_ucom_l s)) in
+  let A := uc_eval (list_to_ucom (opt_to_base_ucom_l l')) in
+  let B := uc_eval (list_to_ucom (opt_to_base_ucom_l s)) in
   let v := f_to_vec 0 dim (get_boolean_expr b f dim) in
-  A × v = (Cexp (f q * (IZR k * PI / 4))) .* B × v.
+  A × v = (Cexp (f q * (IZR k * PI / IZR DEN))) .* B × v.
 Proof.
   intros dim s k q b l' f Hq WT H A B v.
   subst A B v.
@@ -606,12 +634,12 @@ Proof.
   intros b l' H.
   simpl in H.
   destruct a.
-  - dependent destruction p; try discriminate.
+  - dependent destruction o; try discriminate.
     + destruct (merge' s k q (update b n (neg (b n) dim))) eqn:mer; try discriminate.
       inversion H; inversion WT; subst.
       apply (IHs H5) in mer.
       rewrite get_boolean_expr_update_neg in mer.
-      simpl PI4_to_base_ucom_l; simpl list_to_ucom.
+      simpl opt_to_base_ucom_l; simpl list_to_ucom.
       replace (uapp1 (U_R PI 0 PI) n) with (@SQIR.X dim n) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
@@ -620,8 +648,9 @@ Proof.
       rewrite mer.
       repeat rewrite Mscale_mult_dist_l.
       reflexivity.
-    + simpl PI4_to_base_ucom_l; simpl list_to_ucom. 
-      replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIR.Rz dim (IZR k * PI / 4) n) by reflexivity.
+    + simpl opt_to_base_ucom_l; simpl list_to_ucom. 
+      replace (uapp1 (U_R 0 0 (IZR k * PI / IZR DEN)) n) with
+          (@SQIR.Rz dim (IZR k * PI / IZR DEN) n) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
       repeat rewrite Mmult_assoc.
@@ -630,47 +659,27 @@ Proof.
       rewrite Mscale_mult_dist_r.
       rewrite Mscale_assoc.
       destruct (f_eqb (b n) (fun x : nat => if x =? q then true else false) eqb (dim + 1)) eqn:feqb.
-      * destruct (k0 + k =? 8)%Z eqn:k0k8;
-        [ | destruct (k0 + k <? 8)%Z eqn:k0k];
-        inversion H; subst;
-        simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-        2: replace (uapp1 (U_R 0 0 (IZR (k0 + k) * PI / 4)) n) with (@SQIR.Rz dim (IZR (k0 + k) * PI / 4) n) by reflexivity.
-        3: replace (uapp1 (U_R 0 0 (IZR (k0 + k - 8) * PI / 4)) n) with (@SQIR.Rz dim (IZR (k0 + k - 8) * PI / 4) n) by reflexivity.
-        2, 3: simpl; repeat rewrite Mmult_assoc; rewrite f_to_vec_Rz; try assumption.
-        2, 3: rewrite Mscale_mult_dist_r.
-        all: eapply get_boolean_expr_finit in feqb; 
-             try assumption;
-             rewrite feqb;
-             rewrite <- Cexp_add.
-        all: repeat rewrite <- Rmult_div_assoc;
-             rewrite <- Rmult_plus_distr_l;
-             rewrite <- Rmult_plus_distr_r.
-        all: repeat rewrite <- Rmult_div_assoc; 
-             rewrite <- plus_IZR.
-        rewrite Z.eqb_eq in k0k8.
-        rewrite k0k8.
-        replace (8 * (PI / 4))%R with (2 * PI)%R by lra.
+      * inversion H; subst;
+        simpl opt_to_base_ucom_l; simpl list_to_ucom.
+        replace (uapp1 (U_R 0 0 (IZR (k0 + k) * PI / IZR DEN)) n) with (@SQIR.Rz dim (IZR (k0 + k) * PI / IZR DEN) n) by reflexivity.
+        simpl; repeat rewrite Mmult_assoc; rewrite f_to_vec_Rz; try assumption.
+        rewrite Mscale_mult_dist_r.
+        eapply get_boolean_expr_finit in feqb; 
+          try assumption;
+          rewrite feqb;
+          rewrite <- Cexp_add.
+        repeat rewrite <- Rmult_div_assoc;
+          rewrite <- Rmult_plus_distr_l;
+          rewrite <- Rmult_plus_distr_r.
+        repeat rewrite <- Rmult_div_assoc; rewrite <- plus_IZR.
         destruct (f q); simpl; autorewrite with R_db; autorewrite with Cexp_db;
         Msimpl_light; reflexivity.
-        reflexivity.
-        apply f_equal2; try reflexivity. 
-        rewrite minus_IZR.
-        unfold Rminus.
-        rewrite Rmult_plus_distr_r.
-        rewrite Rmult_plus_distr_l.
-        replace (- (8) * (PI / 4))%R with (-(2 * PI))%R by lra.
-        rewrite Cexp_add.
-        destruct (f q); simpl;
-        repeat rewrite Rmult_0_l;
-        repeat rewrite Rmult_1_l.
-        rewrite Cexp_neg, Cexp_2PI.
-        lca. 
-        rewrite Cexp_0. lca.
       * destruct (merge' s k0 q b) eqn:mer; try discriminate.
         inversion H; subst.
         apply (IHs H4) in mer.
-        simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-        replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIR.Rz dim (IZR k * PI / 4) n) by reflexivity.
+        simpl opt_to_base_ucom_l; simpl list_to_ucom.
+        replace (uapp1 (U_R 0 0 (IZR k * PI / IZR DEN)) n) with
+            (@SQIR.Rz dim (IZR k * PI / IZR DEN) n) by reflexivity.
         simpl.
         repeat rewrite Mmult_assoc.
         rewrite f_to_vec_Rz; try assumption.
@@ -680,12 +689,12 @@ Proof.
         rewrite Mscale_assoc.
         apply f_equal2; try reflexivity.
         lca.
-  - dependent destruction p.
+  - dependent destruction o.
     destruct (merge' s k q (update b n0 (xor (b n) (b n0)))) eqn:mer; try discriminate.
       inversion H; inversion WT; subst.
       apply (IHs H8) in mer.
       rewrite get_boolean_expr_update_xor in mer.
-      simpl PI4_to_base_ucom_l; simpl list_to_ucom.
+      simpl opt_to_base_ucom_l; simpl list_to_ucom.
       replace (uapp2 U_CNOT n n0) with (@SQIR.CNOT dim n n0) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
@@ -694,7 +703,7 @@ Proof.
       rewrite mer.
       repeat rewrite Mscale_mult_dist_l.
       reflexivity.
-  - dependent destruction p.
+  - dependent destruction o.
 Qed.
 
 (* TODO: move to Utilities *)
@@ -712,10 +721,10 @@ Proof.
   apply H; lia.
 Qed.
 
-Lemma merge_preserves_semantics : forall {dim} (s : PI4_ucom_l dim) k q l',
-  uc_well_typed_l (App1 (UPI4_PI4 k) q :: s) ->
+Lemma merge_preserves_semantics : forall {dim} (s : opt_ucom_l dim) k q l',
+  uc_well_typed_l (App1 (UO_Rzπ k) q :: s) ->
   merge s k q = Some l' ->
-  l' =l= App1 (UPI4_PI4 k) q :: s.
+  l' =l= App1 (UO_Rzπ k) q :: s.
 Proof.
   intros dim s k q l' WT H.
   inversion WT; subst.
@@ -736,8 +745,9 @@ Proof.
     intros.
     symmetry; apply H0; lia. } 
   rewrite H1. 
-  simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-  replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) q) with (@SQIR.Rz dim (IZR k * PI / 4) q) by reflexivity.
+  simpl opt_to_base_ucom_l; simpl list_to_ucom.
+  replace (uapp1 (U_R 0 0 (IZR k * PI / IZR DEN)) q) with
+      (@SQIR.Rz dim (IZR k * PI / IZR DEN) q) by reflexivity.
   simpl.
   repeat rewrite Mmult_assoc.
   rewrite f_to_vec_Rz; try assumption.
@@ -749,14 +759,14 @@ Qed.
 
 (* Examples *)
 
-Definition test5 : PI4_ucom_l 3 := CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: T 2 :: [].
+Definition test5 : opt_ucom_l 3 := CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: T 2 :: [].
 
 (* Result: Some [CNOT 0 2; P 0; X 2; CNOT 2 1; T 2] *)
 Compute (merge test5 1 0).
 
 (** Final optimization definition. **)
 
-Definition merge_rotation {dim} (l : PI4_ucom_l dim) k q :=
+Definition merge_rotation {dim} (l : opt_ucom_l dim) k q :=
   let (tmp, l2) := get_subcircuit l q in
   let (l1, s) := tmp in
   match merge s k q with
@@ -764,36 +774,36 @@ Definition merge_rotation {dim} (l : PI4_ucom_l dim) k q :=
   | _ => None
   end.
 
-Fixpoint merge_rotations' {dim} (l : PI4_ucom_l dim) n :=
+Fixpoint merge_rotations' {dim} (l : opt_ucom_l dim) n :=
   match n with
   | O => l
   | S n' => match l with
            | [] => []
-           | App1 (UPI4_PI4 k) q :: t =>
+           | App1 (UO_Rzπ k) q :: t =>
                match merge_rotation t k q with
-               | None => App1 (UPI4_PI4 k) q :: (merge_rotations' t n') 
+               | None => App1 (UO_Rzπ k) q :: (merge_rotations' t n') 
                | Some l' => merge_rotations' l' n'
                end
            | g :: t => g :: (merge_rotations' t n')
            end
   end.
 
-Definition merge_rotations {dim} (l : PI4_ucom_l dim) := 
+Definition merge_rotations {dim} (l : opt_ucom_l dim) := 
   merge_rotations' l (List.length l).
 
 (* Proofs *)
 
-Lemma merge_rotation_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) k q l',
+Lemma merge_rotation_preserves_semantics : forall {dim} (l : opt_ucom_l dim) k q l',
   (q < dim)%nat ->
   uc_well_typed_l l ->
   merge_rotation l k q = Some l' ->
-  l' =l= App1 (UPI4_PI4 k) q :: l.
+  l' =l= App1 (UO_Rzπ k) q :: l.
 Proof.
   intros dim l k q l' Hq WT H.
   unfold merge_rotation in H. 
   destruct (get_subcircuit l q) eqn:subc.
   destruct p.
-  destruct (merge p1 k q) eqn:mer; try discriminate.
+  destruct (merge o1 k q) eqn:mer; try discriminate.
   specialize (get_subcircuit_l1_does_not_reference _ _ _ _ _ subc) as dnr.
   apply get_subcircuit_preserves_semantics in subc.
   apply merge_preserves_semantics in mer.
@@ -806,14 +816,14 @@ Proof.
   rewrite subc.
   rewrite mer.
   rewrite app_comm_cons.
-  rewrite (cons_to_app _ p1).
-  rewrite (cons_to_app _ p).
+  rewrite (cons_to_app _ o1).
+  rewrite (cons_to_app _ o0).
   rewrite (does_not_reference_commutes_app1 _ _ _ dnr).
   repeat rewrite app_assoc.
   reflexivity.
 Qed.   
 
-Lemma merge_rotations_sound : forall {dim} (l : PI4_ucom_l dim),
+Lemma merge_rotations_sound : forall {dim} (l : opt_ucom_l dim),
   uc_well_typed_l l ->
   merge_rotations l ≅l≅ l.
 Proof.
@@ -839,7 +849,7 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma merge_rotations_WT: forall {dim} (l : PI4_ucom_l dim),
+Lemma merge_rotations_WT: forall {dim} (l : opt_ucom_l dim),
   uc_well_typed_l l -> uc_well_typed_l (merge_rotations l).
 Proof.
   intros dim l WT.
@@ -850,10 +860,10 @@ Qed.
 
 (* Examples *)
 
-Definition test6 : PI4_ucom_l 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
-Definition test7 : PI4_ucom_l 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
-Definition test8 : PI4_ucom_l 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
-Definition test9 : PI4_ucom_l 3 := T 1 :: T 2 :: CNOT 0 1 :: CNOT 1 2 :: CNOT 1 0 :: T 0 :: CNOT 2 1 :: TDAG 1 :: [].
+Definition test6 : opt_ucom_l 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
+Definition test7 : opt_ucom_l 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
+Definition test8 : opt_ucom_l 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
+Definition test9 : opt_ucom_l 3 := T 1 :: T 2 :: CNOT 0 1 :: CNOT 1 2 :: CNOT 1 0 :: T 0 :: CNOT 2 1 :: TDAG 1 :: [].
 
 (* Result: [CNOT 1 2; CNOT 0 3; CNOT 0 1; CNOT 1 2; CNOT 2 1; PDAG 1; CNOT 3 0; CNOT 0 3; P 0; Z 3] *)
 Compute (merge_rotations test6).

@@ -1,5 +1,5 @@
 Require Import DensitySem.
-Require Import optimizer.PI4GateSet.
+Require Import optimizer.OptimizerGates.
 Require Import Coq.Reals.ROrderedType.
 
 Local Open Scope com_scope.
@@ -70,22 +70,22 @@ Qed.
 (* Inputs: list l, qubit q, classical state b (false = ∣0⟩, true = ∣1⟩)
    Outputs: modified list l', resulting classical state b' of qubit q
             (or None if we don't know whether q is in a classical state) *)
-Fixpoint propagate_classical_through_ucom {dim} (l : PI4_ucom_l dim) q b
-    : PI4_ucom_l dim * option bool :=
+Fixpoint propagate_classical_through_ucom {dim} (l : opt_ucom_l dim) q b
+    : opt_ucom_l dim * option bool :=
   match l with
   | App1 u q' :: t => 
       if q =? q' 
       then match u with
            (* X flips the classical state *)
-           | UPI4_X => 
+           | UO_X => 
                let (l', b') := propagate_classical_through_ucom t q (negb b) in
                (App1 u q' :: l', b')
            (* Rz maintains the classical state *)
-           | UPI4_PI4 _ => 
+           | UO_Rzπ _ => 
                let (l', b') := propagate_classical_through_ucom t q b in
                (App1 u q' :: l', b')
            (* H takes the qubit out of a classical state *)
-           | UPI4_H => (App1 u q' :: t, None)
+           | UO_H => (App1 u q' :: t, None)
            end
       else let (l' ,b') := propagate_classical_through_ucom t q b in
            (App1 u q' :: l', b')
@@ -96,7 +96,7 @@ Fixpoint propagate_classical_through_ucom {dim} (l : PI4_ucom_l dim) q b
       if q =? q1 
       then let (l', b') := propagate_classical_through_ucom t q b in
            if b 
-           then (App1 UPI4_X q2 :: l', b')
+           then (App1 UO_X q2 :: l', b')
            else (l', b')
       else if q =? q2 
            then (App2 u q1 q2 :: t, None)
@@ -108,8 +108,8 @@ Fixpoint propagate_classical_through_ucom {dim} (l : PI4_ucom_l dim) q b
 (* Inputs: list l, qubit q, classical state b (false = ∣0⟩, true = ∣1⟩)
    Outputs: modified list l', resulting classical state b' of qubit q
             (or None if we don't know whether q is in a classical state) *)
-Fixpoint propagate_classical_through_com {dim} (l : PI4_com_l dim) q b n
-    : PI4_com_l dim * option bool :=
+Fixpoint propagate_classical_through_com {dim} (l : opt_com_l dim) q b n
+    : opt_com_l dim * option bool :=
 match n with
 | O => (l, None) (* should be unreachable *)
 | S n' =>
@@ -161,7 +161,7 @@ match n with
 end.
 
 (* Call propagate_classical_through_com for every branch of every measurement. *)
-Fixpoint track_classical_state' {dim} (l : PI4_com_l dim) n :=
+Fixpoint track_classical_state' {dim} (l : opt_com_l dim) n :=
 match n with 
 | O => l (* should be unreachable *)
 | S n' =>
@@ -189,25 +189,25 @@ match n with
   end
 end.
 
-Definition track_classical_state {dim} (l : PI4_com_l dim) :=
+Definition track_classical_state {dim} (l : opt_com_l dim) :=
   track_classical_state' l (count_ops l).
 
 (* Examples *)
 
 (* X 1 ; mif 1 then (H 2; CNOT 1 0) else CNOT 1 2 *)
-Definition test1 : PI4_com_l 3 := UC [X 1] :: Meas 1 [UC (H 2 :: [CNOT 1 0])] [UC [CNOT 1 2]] :: [].
+Definition test1 : opt_com_l 3 := UC [X 1] :: Meas 1 [UC (H 2 :: [CNOT 1 0])] [UC [CNOT 1 2]] :: [].
 Compute (track_classical_state test1).
 (* reset 0 ; reset 0 = mif 0 then X 0 else skip ; mif 0 then X0 else skip *)
-Definition test2 : PI4_com_l 3 := Meas 0 [UC [X 0]] [] :: Meas 0 [UC [X 0]] [] :: [].
+Definition test2 : opt_com_l 3 := Meas 0 [UC [X 0]] [] :: Meas 0 [UC [X 0]] [] :: [].
 Compute (track_classical_state test2).
 (* reset 0 ; H 1 ; CNOT 0 1 ; H 0 ; reset 0 *)
-Definition test3 : PI4_com_l 3 := Meas 0 [UC [X 0]] [] :: UC (H 1 :: [CNOT 0 1]) :: UC [H 0] :: Meas 0 [UC [X 0]] [] :: [].
+Definition test3 : opt_com_l 3 := Meas 0 [UC [X 0]] [] :: UC (H 1 :: [CNOT 0 1]) :: UC [H 0] :: Meas 0 [UC [X 0]] [] :: [].
 Compute (track_classical_state test3).
 (* mif 1 then (X 2 ; Z 1 ; CNOT 2 0) else (H 0 ; X 1 ; CNOT 1 2) ; reset 1 *)
-Definition test4 : PI4_com_l 3 := Meas 1 [UC (X 2 :: Z 1 :: [CNOT 2 0])] [UC (H 0 :: X 1 :: [CNOT 1 2])] :: Meas 1 [] [UC [X 1]] :: [].
+Definition test4 : opt_com_l 3 := Meas 1 [UC (X 2 :: Z 1 :: [CNOT 2 0])] [UC (H 0 :: X 1 :: [CNOT 1 2])] :: Meas 1 [] [UC [X 1]] :: [].
 Compute (track_classical_state test4).
 (* mif 0 then (mif 0 then T 0 else TDAG 0) else (mif 0 then P 0 else PDAG 0) *)
-Definition test5 : PI4_com_l 3 := [Meas 0 [Meas 0 [UC [T 0]] [UC [TDAG 0]]] [Meas 0 [UC [P 0]] [UC [PDAG 0]]]].
+Definition test5 : opt_com_l 3 := [Meas 0 [Meas 0 [UC [T 0]] [UC [TDAG 0]]] [Meas 0 [UC [P 0]] [UC [PDAG 0]]]].
 Compute (track_classical_state test5).
 
 (* Soundness proof *)
@@ -215,12 +215,12 @@ Compute (track_classical_state test5).
 (* If qubit q is initially in classical state b and propagate_classical_through_ucom
    returns boolean b', then qubit q will be in classical state b' after running 
    program u. *)
-Lemma propagate_classical_through_ucom_preserves_classical : forall dim (u : PI4_ucom_l dim) q b u' b' ρ,
+Lemma propagate_classical_through_ucom_preserves_classical : forall dim (u : opt_ucom_l dim) q b u' b' ρ,
   uc_well_typed_l u ->
   WF_Matrix ρ ->
   propagate_classical_through_ucom u q b = (u', Some b') ->
   super (@pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†)) ρ = ρ -> 
-  let ρ' := super (uc_eval (list_to_ucom (PI4_to_base_ucom_l u))) ρ in
+  let ρ' := super (uc_eval (list_to_ucom (opt_to_base_ucom_l u))) ρ in
   super (@pad 1 q dim (∣ b' ⟩ × (∣ b' ⟩)†)) ρ' = ρ'.
 Proof.
   intros dim u q b u' b' ρ WT WFρ res Hρ ρ'.
@@ -251,10 +251,10 @@ Proof.
                 autorewrite with eval_db;
                 bdestruct (q + 1 <=? dim).
            2,4: Msimpl; reflexivity.
-           all: dependent destruction p; simpl.
+           all: dependent destruction o; simpl.
            all: autorewrite with eval_db. 
            all: gridify; Qsimpl; reflexivity. }
-      dependent destruction p; simpl; subst.
+      dependent destruction o; simpl; subst.
       * (* p = H *) 
         inversion res. 
       * (* p = X *)
@@ -306,17 +306,17 @@ Proof.
         autorewrite with eval_db. 
         gridify. 
         all: Qsimpl; reflexivity.
-    + dependent destruction p.
+    + dependent destruction o.
 Qed.
 
 (* If qubit q is initially in classical state b then the program u' returned by
    propagate_classical_through_ucom will compute the same result as the original 
    program u. *)
-Lemma propagate_classical_through_ucom_sound: forall dim (u : PI4_ucom_l dim) q b u' b' ρ,
+Lemma propagate_classical_through_ucom_sound: forall dim (u : opt_ucom_l dim) q b u' b' ρ,
   uc_well_typed_l u ->
   propagate_classical_through_ucom u q b = (u', b') ->
   super (@pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†)) ρ = ρ -> 
-  super (uc_eval (list_to_ucom (PI4_to_base_ucom_l u))) ρ = super (uc_eval (list_to_ucom (PI4_to_base_ucom_l u'))) ρ.
+  super (uc_eval (list_to_ucom (opt_to_base_ucom_l u))) ρ = super (uc_eval (list_to_ucom (opt_to_base_ucom_l u'))) ρ.
 Proof.
   intros dim u q b u' b' ρ WT. 
   generalize dependent ρ.
@@ -338,10 +338,10 @@ Proof.
          autorewrite with eval_db. 
          bdestruct (q + 1 <=? dim).
          2: Msimpl; reflexivity.
-         dependent destruction p; simpl.
+         dependent destruction o; simpl.
          all: autorewrite with eval_db. 
          all: destruct b; gridify; Qsimpl; reflexivity. }
-    dependent destruction p; simpl; subst.
+    dependent destruction o; simpl; subst.
     + inversion res; subst; simpl. reflexivity. 
     + destruct (propagate_classical_through_ucom u n (negb b)) eqn:prop.
       inversion res; subst; simpl.
@@ -392,16 +392,16 @@ Proof.
          autorewrite with eval_db.
     all: gridify. 
     all: Qsimpl; reflexivity.
-  - dependent destruction p. 
+  - dependent destruction o. 
 Qed.
 
-Lemma propagate_classical_through_com_preserves_classical : forall dim (l : PI4_com_l dim) q b n l' b' ρ,
+Lemma propagate_classical_through_com_preserves_classical : forall dim (l : opt_com_l dim) q b n l' b' ρ,
   (dim > 0)%nat ->
   c_well_typed_l l ->
   WF_Matrix ρ ->
   propagate_classical_through_com l q b n = (l', Some b') ->
   super (@pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†)) ρ = ρ -> 
-  let ρ' := c_eval (list_to_com (PI4_to_base_com_l l)) ρ in
+  let ρ' := c_eval (list_to_com (opt_to_base_com_l l)) ρ in
   super (@pad 1 q dim (∣ b' ⟩ × (∣ b' ⟩)†)) ρ' = ρ'.
 Proof.
   intros dim l q b n l' b' ρ Hdim WT WFρ res Hρ ρ'.
@@ -419,9 +419,9 @@ Proof.
   - (* i = UC u *)
     inversion WT; subst.
     simpl.
-    rewrite PI4_to_base_instr_UC, instr_to_com_UC.
+    rewrite opt_to_base_instr_UC, instr_to_com_UC.
     destruct (propagate_classical_through_ucom g q b) eqn:prop_u.
-    destruct o.
+    destruct o0.
     2: inversion res.
     destruct (propagate_classical_through_com l q b0) eqn:prop_c.
     inversion res; subst.
@@ -431,7 +431,7 @@ Proof.
   - (* i = Meas n0 l1 l2 *)
     inversion WT; subst.
     simpl.
-    rewrite PI4_to_base_instr_Meas, instr_to_com_Meas.
+    rewrite opt_to_base_instr_Meas, instr_to_com_Meas.
     bdestruct (q =? n0).
     + (* measurement on qubit q *)
       subst. destruct b; simpl; unfold compose_super, Splus.
@@ -444,7 +444,7 @@ Proof.
            Msimpl.  
       * (* take the true branch *)
         destruct (propagate_classical_through_com l0 n0 true n) eqn:propl0.
-        destruct o.
+        destruct o0.
         2: inversion res.
         destruct (propagate_classical_through_com l n0 b n) eqn:propl.
         inversion res; subst.
@@ -453,7 +453,7 @@ Proof.
         apply double_pad.
       * (* take the false branch *)
         destruct (propagate_classical_through_com l1 n0 false n) eqn:propl1.
-        destruct o.
+        destruct o0.
         2: inversion res.
         destruct (propagate_classical_through_com l n0 b n) eqn:propl.
         inversion res; subst.
@@ -463,7 +463,7 @@ Proof.
     + (* measurement on a different qubit *)
       destruct (propagate_classical_through_com l0 q b n) eqn:propl0.
       destruct (propagate_classical_through_com l1 q b n) eqn:propl1.
-      destruct o; destruct o0; try destruct b0; try destruct b1; simpl; unfold compose_super, Splus.
+      destruct o0; destruct o2; try destruct b0; try destruct b1; simpl; unfold compose_super, Splus.
       (* most cases return None instead of Some b *)
       all: inversion res.
       (* two cases require the inductive hypothesis *)
@@ -489,13 +489,13 @@ Proof.
         all: Qsimpl; reflexivity.
 Qed.
 
-Lemma propagate_classical_through_com_sound: forall dim (l : PI4_com_l dim) q b n l' b' ρ,
+Lemma propagate_classical_through_com_sound: forall dim (l : opt_com_l dim) q b n l' b' ρ,
   (dim > 0)%nat ->
   c_well_typed_l l ->
   WF_Matrix ρ ->
   propagate_classical_through_com l q b n = (l', b') ->
   super (@pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†)) ρ = ρ -> 
-  c_eval (list_to_com (PI4_to_base_com_l l)) ρ = c_eval (list_to_com (PI4_to_base_com_l l')) ρ.
+  c_eval (list_to_com (opt_to_base_com_l l)) ρ = c_eval (list_to_com (opt_to_base_com_l l')) ρ.
 Proof.
   intros dim l q b n l' b' ρ Hdim WT WFρ res Hρ.
   generalize dependent ρ.
@@ -513,18 +513,18 @@ Proof.
     inversion WT; subst.
     simpl.
     destruct (propagate_classical_through_ucom g q b) eqn:prop_u.
-    destruct o.
+    destruct o0.
     destruct (propagate_classical_through_com l q b0 n) eqn:prop_c.
     all: inversion res; subst; simpl; unfold compose_super.
-    all: repeat rewrite PI4_to_base_instr_UC, instr_to_com_UC; simpl.
-    all: erewrite <- propagate_classical_through_ucom_sound with (u:=g) (u':=p); 
+    all: repeat rewrite opt_to_base_instr_UC, instr_to_com_UC; simpl.
+    all: erewrite <- propagate_classical_through_ucom_sound with (u:=g) (u':=o); 
          try apply prop_u; auto.
     eapply IHn; try apply prop_c; auto with wf_db.
     eapply propagate_classical_through_ucom_preserves_classical; try apply prop_u; auto.
   - (* i = Meas n0 l1 l2 *)
     inversion WT; subst.
     simpl.
-    rewrite PI4_to_base_instr_Meas, instr_to_com_Meas.
+    rewrite opt_to_base_instr_Meas, instr_to_com_Meas.
     bdestruct (q =? n0).
     + (* measurement on qubit q *)
       subst. destruct b; simpl; unfold compose_super, Splus.
@@ -537,24 +537,24 @@ Proof.
            Msimpl.  
       * (* take the true branch *)
         destruct (propagate_classical_through_com l0 n0 true n) eqn:propl0.
-        destruct o.
+        destruct o0.
         destruct (propagate_classical_through_com l n0 b n) eqn:propl.
         all: inversion res; subst.
-        all: rewrite PI4_to_base_com_l_app, list_to_com_append; auto with wf_db;
+        all: rewrite opt_to_base_com_l_app, list_to_com_append; auto with wf_db;
              simpl; unfold compose_super.
-        all: erewrite <- IHn with (l:=l0) (l':=p); try apply propl0; auto with wf_db.
+        all: erewrite <- IHn with (l:=l0) (l':=o); try apply propl0; auto with wf_db.
         erewrite <- propagate_classical_through_com_preserves_classical with (l:=l0); try apply propl0; auto with wf_db.
         all: try apply double_pad with (b:=true).
         eapply IHn; try apply propl; destruct b; auto with wf_db. 
         all: apply double_pad.
       * (* take the false branch *)
         destruct (propagate_classical_through_com l1 n0 false n) eqn:propl1.
-        destruct o.
+        destruct o0.
         destruct (propagate_classical_through_com l n0 b n) eqn:propl.
         all: inversion res; subst.
-        all: rewrite PI4_to_base_com_l_app, list_to_com_append; auto with wf_db;
+        all: rewrite opt_to_base_com_l_app, list_to_com_append; auto with wf_db;
              simpl; unfold compose_super.
-        all: erewrite <- IHn with (l:=l1) (l':=p); try apply propl1; auto with wf_db.
+        all: erewrite <- IHn with (l:=l1) (l':=o); try apply propl1; auto with wf_db.
         erewrite <- propagate_classical_through_com_preserves_classical with (l:=l1); try apply propl1; auto with wf_db.
         all: try apply double_pad.
         eapply IHn; try apply propl; destruct b; auto with wf_db. 
@@ -572,15 +572,15 @@ Proof.
         repeat rewrite <- super_Mmult; apply f_equal2; try reflexivity.
         unfold pad; destruct b; gridify.
         all: Qsimpl; reflexivity. }
-      destruct o; destruct o0; try destruct b0; try destruct b1.
+      destruct o0; destruct o2; try destruct b0; try destruct b1.
       destruct (propagate_classical_through_com l q true n) eqn:propl.
       4: destruct (propagate_classical_through_com l q false n) eqn:propl.
       all: inversion res; subst; simpl.
-      all: rewrite PI4_to_base_instr_Meas, instr_to_com_Meas.
+      all: rewrite opt_to_base_instr_Meas, instr_to_com_Meas.
       all: simpl; unfold compose_super, Splus.
       (* most cases only require (IHn l0) and (IHn l1) *)
-      all: erewrite <- IHn with (l:=l0) (l':=p); try apply propl0; auto with wf_db.
-      all: erewrite <- IHn with (l:=l1) (l':=p0); try apply propl1; auto with wf_db.
+      all: erewrite <- IHn with (l:=l0) (l':=o); try apply propl0; auto with wf_db.
+      all: erewrite <- IHn with (l:=l1) (l':=o1); try apply propl1; auto with wf_db.
       (* two cases require propagate_classical_through_com_preserves_classical *)
       * eapply IHn; try apply propl; auto with wf_db.
         rewrite <- super_Mplus.
@@ -594,7 +594,7 @@ Proof.
         eapply propagate_classical_through_com_preserves_classical; try apply propl1; auto with wf_db.
 Qed.
 
-Lemma propagate_classical_through_ucom_WT: forall dim (u : PI4_ucom_l dim) q b u' b',
+Lemma propagate_classical_through_ucom_WT: forall dim (u : opt_ucom_l dim) q b u' b',
   uc_well_typed_l u ->
   propagate_classical_through_ucom u q b = (u', b') ->
   uc_well_typed_l u'.
@@ -609,7 +609,7 @@ Proof.
   destruct a; inversion WT; subst.  
   - bdestruct (q =? n). 
     2: destruct (propagate_classical_through_ucom u q b) eqn:prop. 
-    dependent destruction p; subst.
+    dependent destruction o; subst.
     2: destruct (propagate_classical_through_ucom u n (negb b)) eqn:prop.
     3: destruct (propagate_classical_through_ucom u n b) eqn:prop.
     all: inversion res; subst; constructor; auto.
@@ -621,7 +621,7 @@ Proof.
     4: destruct (propagate_classical_through_ucom u q b) eqn:prop.
     all: inversion res; subst; try constructor; auto.
     all: eapply IHu; try apply prop; auto.
-  - dependent destruction p. 
+  - dependent destruction o. 
 Qed.
 
 Lemma c_well_typed_l_app : forall {U dim} (l1 l2 : com_list U dim),
@@ -640,7 +640,7 @@ Proof.
       split; try constructor; assumption.
 Qed.
 
-Lemma propagate_classical_through_com_WT : forall dim (l : PI4_com_l dim) q b n l' b',
+Lemma propagate_classical_through_com_WT : forall dim (l : opt_com_l dim) q b n l' b',
   c_well_typed_l l ->
   propagate_classical_through_com l q b n = (l', b') ->
   c_well_typed_l l'.
@@ -658,7 +658,7 @@ Proof.
   destruct i; inversion WT; subst.
   - (* i = UC u *)
     destruct (propagate_classical_through_ucom g q b) eqn:prop_u.
-    destruct o.
+    destruct o0.
     destruct (propagate_classical_through_com l q b0 n) eqn:prop_c.
     all: inversion res; subst; constructor; auto.
     all: try eapply propagate_classical_through_ucom_WT; try apply prop_u; auto.
@@ -668,7 +668,7 @@ Proof.
     + destruct b.
       all: try destruct (propagate_classical_through_com l0 q true n) eqn:propl0.
       all: try destruct (propagate_classical_through_com l1 q false n) eqn:propl1.
-      all: try destruct o; try destruct o0.
+      all: try destruct o0; try destruct o2.
       all: try destruct (propagate_classical_through_com l q b n) eqn:propl.
       all: try destruct (propagate_classical_through_com l q b0 n) eqn:propl'.
       all: inversion res; subst.
@@ -677,14 +677,14 @@ Proof.
       all: eapply IHn; try apply propl0; try apply propl1; try apply propl; try apply propl'; auto.
     + destruct (propagate_classical_through_com l0 q b n) eqn:propl0.
       destruct (propagate_classical_through_com l1 q b n) eqn:propl1.
-      destruct o; try destruct o0; try destruct b0; try destruct b1.
+      destruct o0; try destruct o2; try destruct b0; try destruct b1.
       all: try destruct (propagate_classical_through_com l q true n) eqn:proplT.
       all: try destruct (propagate_classical_through_com l q false n) eqn:proplF.
       all: inversion res; subst; constructor; auto.
       all: eapply IHn; try apply propl0; try apply propl1; try apply proplT; try apply proplF; auto.
 Qed.
 
-Lemma track_classical_state_sound : forall dim (l : PI4_com_l dim),
+Lemma track_classical_state_sound : forall dim (l : opt_com_l dim),
   c_well_typed_l l ->
   track_classical_state l =l= l.
 Proof.
@@ -703,19 +703,19 @@ Proof.
   destruct (propagate_classical_through_com l1 n0 false n) eqn:propl1.
   unfold c_equiv_l, c_equiv.
   intros Hdim ρ WFρ.
-  destruct o; destruct o0; try destruct b; try destruct b0.
+  destruct o0, o2; try destruct b; try destruct b0.
   (* two cases where we call propagate on the tail of the list *)
   1: destruct (propagate_classical_through_com l n0 true n) eqn:propl.
   4: destruct (propagate_classical_through_com l n0 false n) eqn:propl.
   1,4: simpl;
-       repeat rewrite PI4_to_base_instr_Meas, instr_to_com_Meas;
+       repeat rewrite opt_to_base_instr_Meas, instr_to_com_Meas;
        simpl; unfold compose_super, Splus;
        repeat rewrite IHn; auto with wf_db.
   all: try eapply propagate_classical_through_com_WT;
        try apply propl0; try apply propl1; try apply propl; auto.
-  1,2: erewrite <- propagate_classical_through_com_sound with (l':=p);
+  1,2: erewrite <- propagate_classical_through_com_sound with (l':=o);
        try apply propl0; auto with wf_db; try apply double_pad.
-  1,2: erewrite <- propagate_classical_through_com_sound with (l':=p0); 
+  1,2: erewrite <- propagate_classical_through_com_sound with (l':=o1); 
        try apply propl1; auto with wf_db; try apply double_pad.
   1,2: erewrite propagate_classical_through_com_sound with (l:=l); 
        try apply propl; auto with wf_db.
@@ -728,12 +728,12 @@ Proof.
   (* all other cases are the same *)
   all: apply Meas_cons_congruence; try apply IHn; auto.
   all: intros; unfold c_eval_l, project_onto. 
-  all: try rewrite (IHn p); auto with wf_db.
-  all: try eapply propagate_classical_through_com_WT with (l:=l0) (l':=p); try apply propl0; auto.
-  all: try erewrite propagate_classical_through_com_sound with (l:=l0) (l':=p); try apply propl0; auto with wf_db.
+  all: try rewrite (IHn o); auto with wf_db.
+  all: try eapply propagate_classical_through_com_WT with (l:=l0) (l':=o); try apply propl0; auto.
+  all: try erewrite propagate_classical_through_com_sound with (l:=l0) (l':=o); try apply propl0; auto with wf_db.
   all: try apply double_pad.
-  all: try rewrite (IHn p0); auto with wf_db.
-  all: try eapply propagate_classical_through_com_WT with (l:=l1) (l':=p0); try apply propl1; auto.
-  all: try erewrite propagate_classical_through_com_sound with (l:=l1) (l':=p0); try apply propl1; auto with wf_db.
+  all: try rewrite (IHn o1); auto with wf_db.
+  all: try eapply propagate_classical_through_com_WT with (l:=l1) (l':=o1); try apply propl1; auto.
+  all: try erewrite propagate_classical_through_com_sound with (l:=l1) (l':=o1); try apply propl1; auto with wf_db.
   all: try apply double_pad.
 Qed.

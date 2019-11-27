@@ -1,6 +1,6 @@
 Require Import Equivalences.
 Require Export ListRepresentation.
-Require Import PI4GateSet.
+Require Import OptimizerGates.
 
 Local Open Scope ucom_scope.
 
@@ -89,14 +89,14 @@ Proof.
 Admitted.
 
 (* Simple tests. -- Why aren't list notations working? *)
-Definition test1 : PI4_ucom_l 3 := (App1 UPI4_H 0) :: (App2 UPI4_CNOT 1 2) :: (App2 UPI4_CNOT 0 1) :: (App1 UPI4_X 1) :: [].
+Definition test1 : opt_ucom_l 3 := (App1 UO_H 0) :: (App2 UO_CNOT 1 2) :: (App2 UO_CNOT 0 1) :: (App1 UO_X 1) :: [].
 Compute (list_to_grid test1).
 Compute (grid_to_list (list_to_grid test1)).
 
-Definition test2 : PI4_ucom_l 3 := (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: [].
+Definition test2 : opt_ucom_l 3 := (App1 UO_H 0) :: (App1 UO_H 0) :: (App1 UO_H 0) :: (App1 UO_H 0) :: [].
 Compute (list_to_grid test2).
 Compute (grid_to_list (list_to_grid test2)).
 
-Definition test3 : PI4_ucom_l 3 := (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App2 UPI4_CNOT 1 2) :: (App2 UPI4_CNOT 0 1) :: (App1 UPI4_X 1) :: (App1 UPI4_X 2) :: (App1 UPI4_X 2) :: [].
+Definition test3 : opt_ucom_l 3 := (App1 UO_H 0) :: (App1 UO_H 0) :: (App1 UO_H 0) :: (App2 UO_CNOT 1 2) :: (App2 UO_CNOT 0 1) :: (App1 UO_X 1) :: (App1 UO_X 2) :: (App1 UO_X 2) :: [].
 Compute (list_to_grid test3).
 Compute (grid_to_list (list_to_grid test3)).
