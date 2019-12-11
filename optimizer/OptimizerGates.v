@@ -8,7 +8,7 @@ Require Import Setoid.
 
 (* The denominator indicating the precision of our rotations. *)
     
-Definition DEN := (2 ^ 16)%Z.
+Definition DEN := (2 ^ 24)%Z.
 
 (* In our optimizations, we often use the gate set {H, X, Rz∘, CNOT} where
    Rzπ is rotation about the z-axis by k * π / DEN for integer k. 
