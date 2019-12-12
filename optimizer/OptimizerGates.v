@@ -7,7 +7,8 @@ Require Import Setoid.
 (** Optimizer Gate Set **)
 
 (* The denominator indicating the precision of our rotations. *)
-    
+(* This can be any multiple of 4 for our proofs to go through (though
+   numbers >= 2^30 could cause overflows in the OCaml code). *)    
 Definition DEN := (2 ^ 24)%Z.
 
 (* In our optimizations, we often use the gate set {H, X, Rz∘, CNOT} where

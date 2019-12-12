@@ -404,7 +404,7 @@ Fixpoint merge' {dim} (s : opt_ucom_l dim) k q f :=
   end.
 *)
 
-(* Simplified version *)
+(* Now using modular arithmetic *)
 Fixpoint merge' {dim} (s : opt_ucom_l dim) k q f :=
   match s with
   | (App1 UO_X q') :: t => 
@@ -415,7 +415,7 @@ Fixpoint merge' {dim} (s : opt_ucom_l dim) k q f :=
       end
   | (App1 (UO_Rzπ k') q') :: t =>
       if f_eqb (f q') (fun x => if x =? q then true else false) eqb (dim + 1)
-      then Some (App1 (UO_Rzπ (k + k')) q' :: t)
+      then Some (App1 (UO_Rzπ ((k + k') mod (2 * DEN))) q' :: t)
       else match merge' t k q f with
            | Some l => Some (App1 (UO_Rzπ k') q' :: l)
            | _ => None
@@ -626,6 +626,7 @@ Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (s : opt_ucom_l di
   let v := f_to_vec 0 dim (get_boolean_expr b f dim) in
   A × v = (Cexp (f q * (IZR k * PI / IZR DEN))) .* B × v.
 Proof.
+  Opaque Z.mul.
   intros dim s k q b l' f Hq WT H A B v.
   subst A B v.
   generalize dependent l'.
@@ -661,7 +662,8 @@ Proof.
       destruct (f_eqb (b n) (fun x : nat => if x =? q then true else false) eqb (dim + 1)) eqn:feqb.
       * inversion H; subst;
         simpl opt_to_base_ucom_l; simpl list_to_ucom.
-        replace (uapp1 (U_R 0 0 (IZR (k0 + k) * PI / IZR DEN)) n) with (@SQIR.Rz dim (IZR (k0 + k) * PI / IZR DEN) n) by reflexivity.
+        replace (uapp1 (U_R 0 0 (IZR ((k0 + k) mod (2 * DEN)) * PI / IZR DEN)) n) with 
+          (@SQIR.Rz dim (IZR ((k0 + k) mod (2 * DEN)) * PI / IZR DEN) n) by reflexivity.
         simpl; repeat rewrite Mmult_assoc; rewrite f_to_vec_Rz; try assumption.
         rewrite Mscale_mult_dist_r.
         eapply get_boolean_expr_finit in feqb; 
@@ -672,7 +674,10 @@ Proof.
           rewrite <- Rmult_plus_distr_l;
           rewrite <- Rmult_plus_distr_r.
         repeat rewrite <- Rmult_div_assoc; rewrite <- plus_IZR.
-        destruct (f q); simpl; autorewrite with R_db; autorewrite with Cexp_db;
+        destruct (f q); simpl; autorewrite with R_db; autorewrite with Cexp_db; trivial.
+        replace (PI * / IZR DEN)%R with (PI / IZR DEN)%R by reflexivity.
+        repeat rewrite Rmult_div_assoc.
+        rewrite <- Cexp_mod_2PI_scaled by (unfold DEN; lia).
         Msimpl_light; reflexivity.
       * destruct (merge' s k0 q b) eqn:mer; try discriminate.
         inversion H; subst.

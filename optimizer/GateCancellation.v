@@ -76,7 +76,7 @@ Definition Rz_commute_rule3 {dim} q (l : opt_ucom_l dim) :=
 Definition Rz_commute_rules {dim} q :=
   @Rz_commute_rule1 dim q :: Rz_commute_rule2 q :: Rz_commute_rule3 q :: [].
 
-(* Modular version:
+(* Old version:
 Definition Rz_cancel_rule {dim} q k (l : opt_ucom_l dim) :=
   match (next_single_qubit_gate l q) with
   | Some (l1, UO_Rzπ k', l2) => 
@@ -88,9 +88,13 @@ Definition Rz_cancel_rule {dim} q k (l : opt_ucom_l dim) :=
   end.
  *)
 
+(* Modular version.
+   Should be a combine rule?
+   Could add a final cancellation pass for k = 0. *)
 Definition Rz_cancel_rule {dim} q k (l : opt_ucom_l dim) :=
   match (next_single_qubit_gate l q) with
-  | Some (l1, UO_Rzπ k', l2) => Some (App1 (UO_Rzπ (k + k')) q :: (l1 ++ l2))
+  | Some (l1, UO_Rzπ k', l2) =>
+    Some (App1 (UO_Rzπ ((k + k') mod (2 * DEN))) q :: (l1 ++ l2))
   | _ => None
   end.
 
@@ -241,7 +245,8 @@ Definition cancel_two_qubit_gates {dim} (l : opt_ucom_l dim) :=
 (* Basic gate equivalences *)
 
 Lemma Rz_Rz_combine : forall {dim} q k k', 
-  @App1 _ dim (UO_Rzπ k) q :: App1 (UO_Rzπ k') q :: [] =l= App1 (UO_Rzπ (k+k')) q :: [].
+  @App1 _ dim (UO_Rzπ k) q :: App1 (UO_Rzπ k') q :: [] =l=
+                                      App1 (UO_Rzπ ((k+k') mod (2 * DEN))) q :: [].
 Proof.
   intros.
   unfold uc_equiv_l; simpl.
@@ -253,9 +258,12 @@ Proof.
   rewrite phase_mul. 
   repeat rewrite <- Rmult_div_assoc.
   rewrite <- Rmult_plus_distr_r.
-  rewrite plus_IZR.
-  rewrite Rplus_comm.
+  rewrite <- plus_IZR.
+  rewrite 2 Rmult_div_assoc.
+  rewrite phase_mod_2PI_scaled.
+  rewrite Z.add_comm.
   reflexivity.
+  unfold DEN; lia. 
 Qed.
 
 (* Removed - once we have negatives, subtracting 2PI isn't that useful...
@@ -282,6 +290,7 @@ Proof.
 Qed.
 *)  
 
+(* Also not currently used - can replace with a simple k = 0 version *)
 Lemma Rz_Rz_cancel : forall {dim} q k k', 
   q < dim -> 
   (k + k' = 2 * DEN)%Z ->
