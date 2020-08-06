@@ -47,6 +47,11 @@ voqc: VOQC/voqc.ml VOQC/_build/default/voqc.exe
 VOQC/_build/default/voqc.exe:
 	dune build voqc.exe --root VOQC
 
+voqc_lib: VOQC/voqc.ml VOQC/_build/default/extraction/libvoqc.so
+
+VOQC/_build/default/extraction/libvoqc.so:
+	dune build extraction/libvoqc.so --root VOQC
+
 # Built by 'make examples'
 
 SQIR/examples/Deutsch.vo: $(examples)/Deutsch.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo

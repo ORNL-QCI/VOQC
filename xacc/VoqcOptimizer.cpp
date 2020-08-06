@@ -17,8 +17,14 @@ void VoqcCircuitOptimizer::apply(std::shared_ptr<CompositeInstruction> program, 
   const auto src = staq->translate(program);
   
   // (2) Write OpenQASM to temp file
-  const std::string in_fName = std::tmpnam(nullptr);
-  const std::string out_fName = std::tmpnam(nullptr);
+  char inTemplate[] = "/tmp/inQasmFileXXXXXX";
+  mkstemp(inTemplate);
+  char outTemplate[] = "/tmp/outQasmFileXXXXXX";
+  mkstemp(outTemplate);
+
+  const std::string in_fName(inTemplate);
+  const std::string out_fName(outTemplate);
+
   std::ofstream inFile(in_fName);
   inFile << src;
   inFile.close();

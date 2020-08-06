@@ -28,8 +28,14 @@ usFunctionEmbedResources(TARGET ${LIBRARY_NAME}
 
 target_include_directories(${LIBRARY_NAME} PUBLIC .)
 
-# TODO:
 # Add a custum target to build VOQC and install libvoqc.so to ${XACC_DIR}/lib
+add_custom_target(voqc ALL)
+add_custom_command(
+  TARGET   voqc
+  COMMAND cd  ${CMAKE_SOURCE_DIR} &&  make voqc_lib && cp ${CMAKE_SOURCE_DIR}/VOQC/_build/default/extraction/libvoqc.so ${XACC_DIR}/lib
+)
+
+add_dependencies(${LIBRARY_NAME} voqc)
 target_link_libraries(${LIBRARY_NAME} PUBLIC xacc::xacc xacc::quantum_gate ${XACC_DIR}/lib/libvoqc.so)
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINK_FLAGS "-shared")
 set_target_properties(${LIBRARY_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
