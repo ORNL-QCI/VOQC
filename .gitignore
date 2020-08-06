@@ -17,3 +17,6 @@ _build/
 
 # python temp directory
 __pycache__/
+
+# Cpp build directory
+build/

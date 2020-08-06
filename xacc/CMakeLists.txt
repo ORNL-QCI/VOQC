@@ -32,7 +32,7 @@ target_link_libraries(${LIBRARY_NAME} PUBLIC xacc::xacc xacc::quantum_gate xacc:
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINK_FLAGS "-shared")
 set_target_properties(${LIBRARY_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
 xacc_configure_plugin_rpath(${LIBRARY_NAME})
-set (CMAKE_INSTALL_PREFIX "${XACC_ROOT}" CACHE PATH "default install path" FORCE )
+set (CMAKE_INSTALL_PREFIX "${XACC_DIR}" CACHE PATH "default install path" FORCE)
 install(FILES $<TARGET_FILE:${LIBRARY_NAME}> DESTINATION ${CMAKE_INSTALL_PREFIX}/plugins) 
 
 #add_subdirectory(tests)

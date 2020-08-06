@@ -1,4 +1,6 @@
 #pragma once
+#include "IRTransformation.hpp"
+#include "OptionsProvider.hpp"
 
 namespace xacc {
 namespace quantum {
@@ -8,7 +10,7 @@ public:
   VoqcCircuitOptimizer() {}
   void apply(std::shared_ptr<CompositeInstruction> program,
                      const std::shared_ptr<Accelerator> accelerator,
-                     const HeterogeneousMap& options = {}) override {};
+                     const HeterogeneousMap& options = {}) override;
   const IRTransformationType type() const override {return IRTransformationType::Optimization;}
 
   const std::string name() const override { return "voqc"; }
