@@ -1,0 +1,7 @@
+{
+    "bundle.symbolic_name" : "xacc_voqc_optimizer",
+    "bundle.activator" : true,
+    "bundle.name" : "XACC VOQC Circuit Optimizer",
+    "bundle.description" : "XACC VOQC Circuit Optimizer"
+  }
+  
