@@ -4,6 +4,7 @@ namespace xacc {
 namespace quantum {
 void VoqcCircuitOptimizer::apply(std::shared_ptr<CompositeInstruction> program, const std::shared_ptr<Accelerator> accelerator, const HeterogeneousMap& options) 
 {
+  std::cout << "Hello apply \n";
   // TODO:
   // Steps:
   // (1) Use Staq to translate the program to OpenQASM

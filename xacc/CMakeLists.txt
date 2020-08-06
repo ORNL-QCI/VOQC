@@ -28,11 +28,13 @@ usFunctionEmbedResources(TARGET ${LIBRARY_NAME}
 
 target_include_directories(${LIBRARY_NAME} PUBLIC .)
 
-target_link_libraries(${LIBRARY_NAME} PUBLIC xacc::xacc xacc::quantum_gate xacc::pauli)
+# TODO:
+# Add a custum target to build VOQC and install libvoqc.so to ${XACC_DIR}/lib
+target_link_libraries(${LIBRARY_NAME} PUBLIC xacc::xacc xacc::quantum_gate ${XACC_DIR}/lib/libvoqc.so)
 set_target_properties(${LIBRARY_NAME} PROPERTIES LINK_FLAGS "-shared")
 set_target_properties(${LIBRARY_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN/../lib")
 xacc_configure_plugin_rpath(${LIBRARY_NAME})
 set (CMAKE_INSTALL_PREFIX "${XACC_DIR}" CACHE PATH "default install path" FORCE)
 install(FILES $<TARGET_FILE:${LIBRARY_NAME}> DESTINATION ${CMAKE_INSTALL_PREFIX}/plugins) 
 
-#add_subdirectory(tests)
+add_subdirectory(tests)
