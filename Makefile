@@ -50,7 +50,7 @@ VOQC/_build/default/voqc.exe:
 voqc_lib: VOQC/voqc.ml VOQC/_build/default/extraction/libvoqc.so
 
 VOQC/_build/default/extraction/libvoqc.so:
-	dune build extraction/libvoqc.so --root VOQC
+	$(HOME)/.opam/default/bin/dune build extraction/libvoqc.so --root VOQC
 
 # Built by 'make examples'
 
