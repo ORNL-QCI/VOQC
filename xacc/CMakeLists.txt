@@ -32,7 +32,7 @@ target_include_directories(${LIBRARY_NAME} PUBLIC .)
 add_custom_target(voqc ALL)
 add_custom_command(
   TARGET   voqc
-  COMMAND cd  ${CMAKE_SOURCE_DIR} &&  make voqc_lib && cp ${CMAKE_SOURCE_DIR}/VOQC/_build/default/extraction/libvoqc.so ${XACC_DIR}/lib
+  COMMAND cd  ${CMAKE_SOURCE_DIR} && make voqc_lib && cp ${CMAKE_SOURCE_DIR}/VOQC/_build/default/extraction/libvoqc.so ${XACC_DIR}/lib
 )
 
 add_dependencies(${LIBRARY_NAME} voqc)

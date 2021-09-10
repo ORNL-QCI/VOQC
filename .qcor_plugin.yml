@@ -1,0 +1,14 @@
+dependencies:
+  ubuntu: 
+    all:
+      - sudo apt-get -y install --no-install-recommends ocaml-nox ocaml opam libffi-dev pkg-config m4 libgmp-dev
+      - opam init --disable-sandboxing && opam install -y zarith dune menhir openQASM ctypes ctypes-foreign ppx_deriving ctypes-zarith
+      - eval $(opam env)
+configure:
+  # If top-level cmake is not at root of plugin repo, 
+  # provide relative path
+  source_dir: '.'
+  # e.g. if plugin needed mpi
+  # mpi:
+  #  - MPI_CXX_EXECUTABLE=/path/to/mpicxx
+  # will add -DMPI_CXX_EXECUTABLE=/path/to/mpicxx to cmake call

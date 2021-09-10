@@ -3,6 +3,7 @@
 #include "InstructionIterator.hpp"
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 
 // VOQC entry-point
 extern "C" {

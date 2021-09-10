@@ -1,7 +1,6 @@
 *.aux
 *.glob
 *.vo
-.*
 *~
 
 # Ignore auto-generated Makefiles
