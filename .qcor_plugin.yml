@@ -12,3 +12,15 @@ configure:
   # mpi:
   #  - MPI_CXX_EXECUTABLE=/path/to/mpicxx
   # will add -DMPI_CXX_EXECUTABLE=/path/to/mpicxx to cmake call
+
+example: "
+printf \"__qpu__ void doubleT(qubit q) {\n \
+   T(q);\n \
+   T(q);\n \
+}\n \
+int main() {\n \
+  auto q = qalloc(1);\n \
+  doubleT::print_kernel(q[0]);\n \
+  return 0;\n \
+}\" | qcor -opt-pass voqc -x c++ - ; ./a.out \n \
+"
