@@ -50,8 +50,7 @@ VOQC/_build/default/voqc.exe:
 voqc_lib: VOQC/voqc.ml VOQC/_build/default/extraction/libvoqc.so
 
 VOQC/_build/default/extraction/libvoqc.so:
-	eval $(opam env) 
-	dune build extraction/libvoqc.so --root VOQC
+	OPAM="$(shell opam env)"; eval $$OPAM; dune build extraction/libvoqc.so --root VOQC
 
 # Built by 'make examples'
 
